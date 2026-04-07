@@ -107,6 +107,12 @@ const usuarioService = new ApiService<Usuario>('...');
 
 ---
 
+Taller actual  →  Servidor HTTP Next.js API Routes  →  ngrok  →  Claude API
+
+## NO SE MATEN LA CABEZA CON NGROK AÚN, LO VEMOS MAS ADELANTE
+
+---
+
 ## Links útiles
 
 - [JSONPlaceholder Docs](https://jsonplaceholder.typicode.com/)
