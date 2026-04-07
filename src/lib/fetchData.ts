@@ -4,6 +4,7 @@ export async function fetchData<T>(url: string): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(url);
 
+    // Error HTTP: sí hubo respuesta del servidor, pero con estado no exitoso.
     if (!response.ok) {
       return {
         data: null,
@@ -31,6 +32,7 @@ export async function fetchData<T>(url: string): Promise<ApiResponse<T>> {
       status: response.status,
     };
   } catch (error) {
+    // Error de red/ejecución: no hubo respuesta HTTP válida (status 0).
     return {
       data: null,
       error: error instanceof Error ? `Error de red: ${error.message}` : "Error de red desconocido.",

@@ -15,10 +15,12 @@ export class ApiService<TList, TDetail = TList> {
   async getAll(): Promise<ApiResponse<TList[]>> {
     const result = await fetchData<unknown>(this.buildListUrl());
 
+    // Si fetchData ya detectó error, lo propagamos tal cual.
     if (result.error) {
       return { data: null, error: result.error, status: result.status };
     }
 
+    // Caso 1: API que devuelve directamente un arreglo.
     if (Array.isArray(result.data)) {
       return {
         data: result.data as TList[],
@@ -27,6 +29,7 @@ export class ApiService<TList, TDetail = TList> {
       };
     }
 
+    // Caso 2: API paginada tipo PokeAPI/Rick&Morty: { results: [...] }.
     if (
       result.data !== null &&
       typeof result.data === "object" &&
@@ -48,6 +51,7 @@ export class ApiService<TList, TDetail = TList> {
   }
 
   async getOne(id: number | string): Promise<ApiResponse<TDetail>> {
+    // Acepta id numérico o string (ej: "pikachu").
     return fetchData<TDetail>(`${this.endpoint}/${id}`);
   }
 }
