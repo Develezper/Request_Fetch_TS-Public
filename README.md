@@ -11,6 +11,15 @@ Vas a consumir una API pública. Puedes elegir una de estas:
 - **JSONPlaceholder** → `https://jsonplaceholder.typicode.com`
 - **Rick & Morty API** → `https://rickandmortyapi.com/api`
 
+## Ejecucion con Bun
+
+Este proyecto se trabaja con Bun (no npm).
+
+```bash
+bun install
+bun run dev
+```
+
 ---
 
 ## Parte 1 — La Interfaz `ApiResponse<T>`
@@ -107,9 +116,9 @@ const usuarioService = new ApiService<Usuario>('...');
 
 ---
 
-Taller actual  →  Servidor HTTP Next.js API Routes  →  ngrok  →  Claude API
+Taller actual  →  Servidor HTTP Next.js API Routes  →  VS Code Port Forwarding  →  Claude API
 
-## NO SE MATEN LA CABEZA CON NGROK AÚN, LO VEMOS MAS ADELANTE
+## PUEDES USAR LA EXPOSICION DE PUERTOS INTEGRADA DE VS CODE (SIN NGROK POR AHORA)
 
 ---
 

@@ -1,44 +1,33 @@
-//fetch
+import { ApiService } from "./services/ApiService";
+import type {
+  AbilityDetail,
+  AbilitySummary,
+  PokemonDetail,
+  PokemonSummary,
+} from "./types/pokemon";
 
-interface ApiResponse<T> {
-    data:T | null;  //esto es el cuerpo del body en caso tal de que salga bien
-    error:string | null; //error en caso tal de que salga mal
-    status:number;  //codigo http [200, 400, 401, 500]
+const pokemonService = new ApiService<PokemonSummary, PokemonDetail>(
+  "https://pokeapi.co/api/v2/pokemon",
+  10,
+);
+
+const abilityService = new ApiService<AbilitySummary, AbilityDetail>(
+  "https://pokeapi.co/api/v2/ability",
+  10,
+);
+
+async function main(): Promise<void> {
+  const pokemonList = await pokemonService.getAll();
+  console.log("Lista de pokémon:", pokemonList);
+
+  const pikachu = await pokemonService.getOne("pikachu");
+  console.log("Detalle de pikachu:", pikachu);
+
+  const abilityList = await abilityService.getAll();
+  console.log("Lista de habilidades:", abilityList);
+
+  const invalidPokemon = await pokemonService.getOne("no-existe-12345");
+  console.log("Pokémon inválido:", invalidPokemon);
 }
 
-async function apiRequest<T>(url:string): Promise<ApiResponse<T>>{
-    try {
-        const res = await fetch(url);
-
-        if (!res.ok) {
-            return {
-                data:null,
-                error: `Error a la hora de hacer la peticion: ${res.statusText}`,
-                status: res.status
-            }
-        }
-
-        const body: unknown = await res.json();
-
-        if (body === null || body === undefined) {
-            return{
-                data:null,
-                error: "Error en la petición",
-                status: res.status
-            };
-        }
-
-        return {
-            data:body as T,
-            error:null,
-            status:res.status
-        }
-    } catch (error) {
-        //se nos cayo el internet
-        return{
-            data:null,
-            error:"fallo la conexion total, compre internet",
-            status: 500
-        };
-    }
-}
+void main();
