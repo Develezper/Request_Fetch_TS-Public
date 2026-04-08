@@ -1,10 +1,14 @@
 import { ApiService } from "./services/ApiService";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type {
   AbilityDetail,
   AbilitySummary,
   PokemonDetail,
   PokemonSummary,
 } from "./types/pokemon";
+
+const PORT = Number(process.env.PORT ?? 3000);
+const HOST = process.env.HOST ?? "0.0.0.0";
 
 const pokemonService = new ApiService<PokemonSummary, PokemonDetail>(
   "https://pokeapi.co/api/v2/pokemon",
@@ -16,49 +20,114 @@ const abilityService = new ApiService<AbilitySummary, AbilityDetail>(
   10,
 );
 
-async function main(): Promise<void> {
-  // 1) Lista paginada de recursos (resumen).
-  const pokemonList = await pokemonService.getAll();
-  console.log("Lista de pokémon:", {
-    status: pokemonList.status,
-    error: pokemonList.error,
-    total: pokemonList.data?.length ?? 0,
-    names: pokemonList.data?.map((pokemon) => pokemon.name) ?? [],
-  });
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
 
-  // 2) Recurso individual usando nombre como identificador.
-  const pikachu = await pokemonService.getOne("pikachu");
-  console.log("Detalle de pikachu:", {
-    status: pikachu.status,
-    error: pikachu.error,
-    data: pikachu.data
-      ? {
-          id: pikachu.data.id,
-          name: pikachu.data.name,
-          height: pikachu.data.height,
-          weight: pikachu.data.weight,
-          types: pikachu.data.types.map((typeInfo) => typeInfo.type.name),
-          abilities: pikachu.data.abilities.map((abilityInfo) => abilityInfo.ability.name),
-        }
-      : null,
+function sendJson(
+  response: ServerResponse,
+  payload: unknown,
+  status = 200,
+): void {
+  response.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    ...CORS_HEADERS,
   });
-
-  // 3) Segundo recurso para demostrar reutilización del servicio genérico.
-  const abilityList = await abilityService.getAll();
-  console.log("Lista de habilidades:", {
-    status: abilityList.status,
-    error: abilityList.error,
-    total: abilityList.data?.length ?? 0,
-    names: abilityList.data?.map((ability) => ability.name) ?? [],
-  });
-
-  // 4) Caso de error controlado para verificar manejo de 404.
-  const invalidPokemon = await pokemonService.getOne("no-existe-12345");
-  console.log("Pokémon inválido:", {
-    status: invalidPokemon.status,
-    error: invalidPokemon.error,
-    data: invalidPokemon.data,
-  });
+  response.end(JSON.stringify(payload));
 }
 
-void main();
+function sendNotFound(response: ServerResponse, pathname: string): void {
+  sendJson(
+    response,
+    {
+      error: "Ruta no encontrada",
+      pathname,
+      routes: [
+        "GET /health",
+        "GET /pokemon",
+        "GET /pokemon/:id",
+        "GET /ability",
+        "GET /ability/:id",
+      ],
+    },
+    404,
+  );
+}
+
+async function handleRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  if (request.method === "OPTIONS") {
+    response.writeHead(204, CORS_HEADERS);
+    response.end();
+    return;
+  }
+
+  if (request.method !== "GET") {
+    sendJson(response, { error: "Método no permitido" }, 405);
+    return;
+  }
+
+  const host = request.headers.host ?? `${HOST}:${PORT}`;
+  const url = new URL(request.url ?? "/", `http://${host}`);
+  const { pathname } = url;
+
+  if (pathname === "/health") {
+    sendJson(response, {
+      ok: true,
+      service: "request-fetch-ts",
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (pathname === "/pokemon") {
+    const result = await pokemonService.getAll();
+    sendJson(response, result, result.status || 500);
+    return;
+  }
+
+  if (pathname.startsWith("/pokemon/")) {
+    const idOrName = decodeURIComponent(pathname.replace("/pokemon/", ""));
+    if (!idOrName) {
+      sendJson(response, { error: "Falta el id o nombre del pokemon" }, 400);
+      return;
+    }
+    const result = await pokemonService.getOne(idOrName);
+    sendJson(response, result, result.status || 500);
+    return;
+  }
+
+  if (pathname === "/ability") {
+    const result = await abilityService.getAll();
+    sendJson(response, result, result.status || 500);
+    return;
+  }
+
+  if (pathname.startsWith("/ability/")) {
+    const idOrName = decodeURIComponent(pathname.replace("/ability/", ""));
+    if (!idOrName) {
+      sendJson(response, { error: "Falta el id o nombre de la habilidad" }, 400);
+      return;
+    }
+    const result = await abilityService.getOne(idOrName);
+    sendJson(response, result, result.status || 500);
+    return;
+  }
+
+  sendNotFound(response, pathname);
+}
+
+const server = createServer((request, response) => {
+  handleRequest(request, response).catch((error) => {
+    const message = error instanceof Error ? error.message : "Error interno del servidor";
+    sendJson(response, { error: message }, 500);
+  });
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`Server listening on http://${HOST}:${PORT}`);
+});
